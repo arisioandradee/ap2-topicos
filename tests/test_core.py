@@ -131,3 +131,38 @@ def test_prep_dicom_pack_and_read(tmp_path):
     a = np.asarray(img).astype(float)
     # janela do cerebro (40,80): HU~0 -> ~0.5 (apos correcao do offset de 12 bits tambem)
     assert abs(np.asarray(st.get("ID_000"))[..., 0].mean() - np.asarray(st.get("ID_001"))[..., 0].mean()) < 25
+
+
+def test_build_dataset_merge_and_split(tmp_path):
+    import pandas as pd
+    from src import build_dataset
+    from src.common import SUBTYPES
+    rng = np.random.default_rng(0)
+    rows, lab = [], []
+    n = 0
+    for p in range(60):
+        for k in range(5):
+            iid = f"ID_{n:06d}"; n += 1
+            rows.append({"image_id": iid, "PatientID": f"P{p}", "StudyInstanceUID": f"S{p}", "SliceThickness": "5"})
+            y = int(rng.random() < 0.3)
+            for s in SUBTYPES:
+                lab.append({"ID": f"{iid}_{s}", "Label": y if s == "any" else int(y and rng.random() < 0.3)})
+    meta = pd.DataFrame(rows)
+    pd.DataFrame(lab).to_csv(tmp_path / "labels.csv", index=False)
+    for k in range(3):
+        d = tmp_path / "in" / ("datasets" if k else "notebooks") / f"x{k}" / "img192"; d.mkdir(parents=True)
+        part = meta.iloc[k::3]
+        part.to_csv(d / f"meta_shard{k}.csv", index=False)
+        pd.DataFrame({"image_id": part.image_id, "bin": f"images_shard{k}.bin", "offset": 0, "length": 1}).to_csv(d / f"index_shard{k}.csv", index=False)
+        (d / f"images_shard{k}.bin").write_bytes(b"x")
+        (d / f"corrupted_shard{k}.txt").write_text("ID_bad\terro" if k == 1 else "")
+    (tmp_path / "in" / "competitions" / "c").mkdir(parents=True)
+    df, rep, summ = build_dataset.build(str(tmp_path / "in"), str(tmp_path / "labels.csv"), str(tmp_path / "out"))
+    assert rep["convertidas"] == 300 and rep["corrompidos"] == 1 and len(df) == 300
+    assert (tmp_path / "out" / "splits.csv").exists() and (tmp_path / "out" / "images_shard2.bin").exists()
+    build_dataset.split.check_no_leak(df) if hasattr(build_dataset, "split") else None
+    # parte faltando -> erro
+    import shutil
+    shutil.rmtree(tmp_path / "in" / "notebooks")
+    with pytest.raises(AssertionError):
+        build_dataset.build(str(tmp_path / "in"), str(tmp_path / "labels.csv"), str(tmp_path / "out2"))
