@@ -2,8 +2,8 @@
 
   trivial : DummyClassifier (classe majoritaria / prior)
   hog_rf  : HOG (canal janela-cerebro, 128x128, parametros do TP1) + RandomForest
-            (grade do TP1: n_estimators {100,200} x max_depth {None,10,20} x min_samples_split {2,5};
-             escolha por validacao em particao FIXA por paciente - nao por CV no teste)
+            (grade reduzida: 200 arvores x max_depth {None,20} x min_samples_split {2,5}, escolhida por
+             validacao em particao FIXA por paciente; semente 0 escolhe, as demais retreinam a melhor)
 
 Saida no mesmo formato dos modelos (preds.npz com 6 colunas; so a coluna 'any' e treinada,
 as demais recebem a prevalencia do treino).
@@ -68,21 +68,28 @@ def main(argv=None):
     t0 = time.time()
     Xtr, Xva, Xte = (features(p, a.img_dir, a.n_jobs) for p in (tr, va, te))
     t_feat = time.time() - t0
-    grid = [(n, md, ms) for n in (100, 200) for md in (None, 10, 20) for ms in (2, 5)]
-    for seed in a.seeds:
+    # Orcamento: grade reduzida (4 configs x 200 arvores) escolhida na VALIDACAO com a semente 0 e treino COMPLETO;
+    # as demais sementes retreinam so a melhor configuracao.
+    grid = [(200, md, ms) for md in (None, 20) for ms in (2, 5)]
+    best_cfg, best = None, -1
+    for idx, seed in enumerate(a.seeds):
         seed_everything(seed)
-        best, best_cfg, best_rf = -1, None, None
-        for n, md, ms in grid:
+        cfgs = grid if idx == 0 else [best_cfg]
+        top_auc, top_cfg, top_rf = -1, None, None
+        for n, md, ms in cfgs:
             rf = RandomForestClassifier(n_estimators=n, max_depth=md, min_samples_split=ms, random_state=seed, n_jobs=a.n_jobs)
             rf.fit(Xtr, tr["any"].values)
             auc = roc_auc_score(va["any"].values, rf.predict_proba(Xva)[:, 1])  # escolha na VALIDACAO
-            if auc > best: best, best_cfg, best_rf = auc, (n, md, ms), rf
+            print("seed", seed, (n, md, ms), "val AUC", round(auc, 4), flush=True)
+            if auc > top_auc: top_auc, top_cfg, top_rf = auc, (n, md, ms), rf
+        if idx == 0:
+            best_cfg, best = top_cfg, top_auc
         save(os.path.join(a.out, f"baseline_hog_rf_s{seed}{suf}"), "hog_rf", df,
-             best_rf.predict_proba(Xva)[:, 1], best_rf.predict_proba(Xte)[:, 1], prior,
-             {"args": {"model": "baseline_hog_rf", "seed": seed, "best_cfg(n_est,max_depth,min_split)": best_cfg},
-              "family": "baseline", "smoke": a.smoke, "val_auc_any_full": best, "params_total": 0,
+             top_rf.predict_proba(Xva)[:, 1], top_rf.predict_proba(Xte)[:, 1], prior,
+             {"args": {"model": "baseline_hog_rf", "seed": seed, "cfg(n_est,max_depth,min_split)": top_cfg,
+                       "grid": grid, "grid_escolhida_com_semente": a.seeds[0]},
+              "family": "baseline", "smoke": a.smoke, "val_auc_any_full": top_auc, "params_total": 0,
               "params_trainable": 0, "train_time_s": time.time() - t0, "feature_time_s": t_feat})
-        print("seed", seed, best_cfg, "val AUC", best)
 
 
 if __name__ == "__main__":
