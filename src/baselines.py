@@ -18,18 +18,23 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import roc_auc_score
 from tqdm import tqdm
 from .common import SUBTYPES, seed_everything
+from .data import ImageStore
 
 
-def hog_feat(path, size=128):
-    img = Image.open(path).convert("RGB").split()[0].resize((size, size), Image.BILINEAR)  # canal 0 = janela cerebro
+def hog_feat(img, size=128):
+    img = img.convert("RGB").split()[0].resize((size, size), Image.BILINEAR)  # canal 0 = janela cerebro
     x = np.asarray(img, np.float32) / 255.0
     return hog(x, orientations=9, pixels_per_cell=(16, 16), cells_per_block=(2, 2), block_norm="L2-Hys").astype(np.float32)
 
 
 def features(df, img_dir, n_jobs):
-    paths = [os.path.join(img_dir, i + ".jpg") for i in df["image_id"]]
-    out = Parallel(n_jobs=n_jobs, batch_size=256)(delayed(hog_feat)(p) for p in tqdm(paths))
-    return np.stack(out)
+    store = ImageStore(img_dir)
+    ids = df["image_id"].tolist()
+    def chunk(sub):
+        return [hog_feat(store.get(i)) for i in sub]
+    parts = [ids[i:i + 2000] for i in range(0, len(ids), 2000)]
+    out = Parallel(n_jobs=n_jobs)(delayed(chunk)(p) for p in tqdm(parts))
+    return np.stack([f for o in out for f in o])
 
 
 def save(odir, name, df, p_val, p_test, prior, info):

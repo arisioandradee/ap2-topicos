@@ -92,3 +92,42 @@ def test_make_report_end_to_end(syn, tmp_path):
     t = pd.read_csv(tmp_path / "t" / "main_table.csv")
     assert t.iloc[0]["config"].startswith("resnet50_finetune") and t.iloc[0]["n_seeds"] == 3
     assert len(pd.read_csv(tmp_path / "t" / "paired_tests.csv")) == 1
+
+
+def _fake_dicom(path, seed, bits12=False):
+    import pydicom
+    from pydicom.dataset import FileDataset, FileMetaDataset
+    from pydicom.uid import ExplicitVRLittleEndian, generate_uid
+    rng = np.random.default_rng(seed)
+    meta = FileMetaDataset(); meta.TransferSyntaxUID = ExplicitVRLittleEndian
+    meta.MediaStorageSOPClassUID = "1.2.840.10008.5.1.4.1.1.2"; meta.MediaStorageSOPInstanceUID = generate_uid()
+    ds = FileDataset(str(path), {}, file_meta=meta, preamble=b"\0" * 128)
+    ds.PatientID = f"P{seed % 3}"; ds.StudyInstanceUID = "1.2.3"; ds.SeriesInstanceUID = "1.2.4"
+    ds.Rows = ds.Columns = 128; ds.BitsAllocated = 16; ds.BitsStored = 12 if bits12 else 16
+    ds.HighBit = ds.BitsStored - 1; ds.SamplesPerPixel = 1; ds.PhotometricInterpretation = "MONOCHROME2"
+    ds.PixelRepresentation = 0 if bits12 else 1
+    ds.RescaleSlope = 1; ds.RescaleIntercept = 0 if bits12 else -1024
+    base = 1040 if bits12 else 1064  # ambos = 40 HU
+    px = (base + rng.normal(0, 10, (128, 128))).astype(np.uint16 if bits12 else np.int16)
+    ds.PixelData = px.tobytes(); ds.ImagePositionPatient = [0, 0, float(seed)]; ds.SliceThickness = 5
+    ds.save_as(str(path), enforce_file_format=True)
+
+
+def test_prep_dicom_pack_and_read(tmp_path):
+    from src import prep_dicom
+    from src.data import ImageStore
+    d = tmp_path / "dcm"; d.mkdir()
+    for i in range(6):
+        _fake_dicom(d / f"ID_{i:03d}.dcm", i, bits12=(i % 2 == 0))
+    (d / "ID_bad.dcm").write_bytes(b"lixo")
+    out = tmp_path / "out"
+    import sys
+    sys.argv = ["x", "--dicom_dir", str(d), "--out_dir", str(out), "--size", "64", "--workers", "1"]
+    prep_dicom.main()
+    assert "ID_bad" in (out / "corrupted_shard0.txt").read_text()
+    st = ImageStore(str(out))
+    img = st.get("ID_001")
+    assert img.size == (64, 64) and len(st.loc) == 6
+    a = np.asarray(img).astype(float)
+    # janela do cerebro (40,80): HU~0 -> ~0.5 (apos correcao do offset de 12 bits tambem)
+    assert abs(np.asarray(st.get("ID_000"))[..., 0].mean() - np.asarray(st.get("ID_001"))[..., 0].mean()) < 25

@@ -10,7 +10,7 @@ Politicas (justificativa clinica no artigo):
   alt  : TrivialAugmentWide (politica automatica, agnostica ao dominio) + flip horizontal.
          Operacoes de cor alteram o significado das janelas de HU -> serve de contraste.
 """
-import os
+import glob, io, os
 import numpy as np, pandas as pd, torch
 from PIL import Image
 from torch.utils.data import Dataset
@@ -44,17 +44,54 @@ def build_transform(policy, train, res, mean, std):
     raise ValueError(policy)
 
 
+class ImageStore:
+    """Leitura de imagens: arquivos .bin empacotados (index_shard*.csv, buscados recursivamente em `root`)
+    ou, se nao houver indice, arquivos <root>/<image_id>.jpg."""
+
+    def __init__(self, root):
+        self.root, self.loc, self._mm = root, {}, {}
+        for ip in sorted(glob.glob(os.path.join(root, "**", "index_shard*.csv"), recursive=True)):
+            d = os.path.dirname(ip)
+            idx = pd.read_csv(ip)
+            for iid, b, o, n in zip(idx.image_id, idx.bin, idx.offset, idx.length):
+                self.loc[iid] = (os.path.join(d, b), int(o), int(n))
+
+    def _map(self, path):
+        import mmap
+        if path not in self._mm:
+            f = open(path, "rb"); self._mm[path] = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
+        return self._mm[path]
+
+    def __getstate__(self):  # mmap nao e serializavel (DataLoader com workers)
+        d = dict(self.__dict__); d["_mm"] = {}; return d
+
+    def get(self, iid):
+        if iid in self.loc:
+            path, o, n = self.loc[iid]
+            return Image.open(io.BytesIO(self._map(path)[o:o + n])).convert("RGB")
+        return Image.open(os.path.join(self.root, iid + ".jpg")).convert("RGB")
+
+
+_STORES = {}
+
+
+def get_store(root):
+    if root not in _STORES:
+        _STORES[root] = ImageStore(root)
+    return _STORES[root]
+
+
 class CTDataset(Dataset):
-    def __init__(self, df, img_dir, transform, with_labels=True):
+    def __init__(self, df, img_dir, transform, with_labels=True, store=None):
         self.ids = df["image_id"].tolist()
         self.y = df[SUBTYPES].values.astype(np.float32) if with_labels else None
-        self.dir, self.tf = img_dir, transform
+        self.store, self.tf = store or get_store(img_dir), transform
 
     def __len__(self):
         return len(self.ids)
 
     def __getitem__(self, i):
-        img = Image.open(os.path.join(self.dir, self.ids[i] + ".jpg")).convert("RGB")
+        img = self.store.get(self.ids[i])
         x = self.tf(img)
         y = torch.from_numpy(self.y[i]) if self.y is not None else torch.zeros(len(SUBTYPES))
         return x, y, i
