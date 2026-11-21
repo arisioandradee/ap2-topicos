@@ -1,0 +1,84 @@
+"""Baselines do TP1 RETREINADOS no treino COMPLETO e avaliados no mesmo teste dos modelos novos.
+
+  trivial : DummyClassifier (classe majoritaria / prior)
+  hog_rf  : HOG (canal janela-cerebro, 128x128, parametros do TP1) + RandomForest
+            (grade do TP1: n_estimators {100,200} x max_depth {None,10,20} x min_samples_split {2,5};
+             escolha por validacao em particao FIXA por paciente - nao por CV no teste)
+
+Saida no mesmo formato dos modelos (preds.npz com 6 colunas; so a coluna 'any' e treinada,
+as demais recebem a prevalencia do treino).
+"""
+import argparse, json, os, time
+import numpy as np, pandas as pd
+from PIL import Image
+from joblib import Parallel, delayed
+from skimage.feature import hog
+from sklearn.dummy import DummyClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import roc_auc_score
+from tqdm import tqdm
+from .common import SUBTYPES, seed_everything
+
+
+def hog_feat(path, size=128):
+    img = Image.open(path).convert("RGB").split()[0].resize((size, size), Image.BILINEAR)  # canal 0 = janela cerebro
+    x = np.asarray(img, np.float32) / 255.0
+    return hog(x, orientations=9, pixels_per_cell=(16, 16), cells_per_block=(2, 2), block_norm="L2-Hys").astype(np.float32)
+
+
+def features(df, img_dir, n_jobs):
+    paths = [os.path.join(img_dir, i + ".jpg") for i in df["image_id"]]
+    out = Parallel(n_jobs=n_jobs, batch_size=256)(delayed(hog_feat)(p) for p in tqdm(paths))
+    return np.stack(out)
+
+
+def save(odir, name, df, p_val, p_test, prior, info):
+    os.makedirs(odir, exist_ok=True)
+    va, te = df[df.split == "val"], df[df.split == "test"]
+    def six(p):
+        m = np.tile(prior, (len(p), 1)).astype(np.float32); m[:, 0] = p; return m
+    np.savez_compressed(os.path.join(odir, "preds.npz"), val_ids=va.image_id.values, val_prob=six(p_val),
+                        test_ids=te.image_id.values, test_prob=six(p_test))
+    json.dump(info, open(os.path.join(odir, "run.json"), "w"), indent=2, default=str)
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--img_dir", required=True); ap.add_argument("--splits", required=True)
+    ap.add_argument("--out", default="results/runs"); ap.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
+    ap.add_argument("--n_jobs", type=int, default=-1); ap.add_argument("--smoke", action="store_true")
+    a = ap.parse_args(argv)
+    df = pd.read_csv(a.splits)
+    if a.smoke:
+        df = pd.concat([df[df.split == s].head(80) for s in ("train", "val", "test")]).reset_index(drop=True)
+    tr, va, te = (df[df.split == s] for s in ("train", "val", "test"))
+    prior = tr[SUBTYPES].mean().values
+    suf = "_SMOKE" if a.smoke else ""
+    for seed in a.seeds:  # trivial e determinista; mantemos 3 execucoes por consistencia de formato
+        d = DummyClassifier(strategy="prior").fit(np.zeros((len(tr), 1)), tr["any"])
+        save(os.path.join(a.out, f"baseline_trivial_s{seed}{suf}"), "trivial", df,
+             d.predict_proba(np.zeros((len(va), 1)))[:, 1], d.predict_proba(np.zeros((len(te), 1)))[:, 1], prior,
+             {"args": {"model": "baseline_trivial", "seed": seed}, "family": "baseline", "smoke": a.smoke,
+              "params_total": 0, "params_trainable": 0, "train_time_s": 0})
+    t0 = time.time()
+    Xtr, Xva, Xte = (features(p, a.img_dir, a.n_jobs) for p in (tr, va, te))
+    t_feat = time.time() - t0
+    grid = [(n, md, ms) for n in (100, 200) for md in (None, 10, 20) for ms in (2, 5)]
+    for seed in a.seeds:
+        seed_everything(seed)
+        best, best_cfg, best_rf = -1, None, None
+        for n, md, ms in grid:
+            rf = RandomForestClassifier(n_estimators=n, max_depth=md, min_samples_split=ms, random_state=seed, n_jobs=a.n_jobs)
+            rf.fit(Xtr, tr["any"].values)
+            auc = roc_auc_score(va["any"].values, rf.predict_proba(Xva)[:, 1])  # escolha na VALIDACAO
+            if auc > best: best, best_cfg, best_rf = auc, (n, md, ms), rf
+        save(os.path.join(a.out, f"baseline_hog_rf_s{seed}{suf}"), "hog_rf", df,
+             best_rf.predict_proba(Xva)[:, 1], best_rf.predict_proba(Xte)[:, 1], prior,
+             {"args": {"model": "baseline_hog_rf", "seed": seed, "best_cfg(n_est,max_depth,min_split)": best_cfg},
+              "family": "baseline", "smoke": a.smoke, "val_auc_any_full": best, "params_total": 0,
+              "params_trainable": 0, "train_time_s": time.time() - t0, "feature_time_s": t_feat})
+        print("seed", seed, best_cfg, "val AUC", best)
+
+
+if __name__ == "__main__":
+    main()

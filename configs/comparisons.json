@@ -1,0 +1,13 @@
+[
+  {"label": "CNN: congelado vs ajuste fino", "a": "resnet50_finetune_cosine_aug-main_r160", "b": "resnet50_linear_aug-main_r160"},
+  {"label": "ViT DINOv2: congelado vs ajuste fino", "a": "dinov2_small_finetune_cosine_aug-main_r154", "b": "dinov2_small_linear_aug-main_r154"},
+  {"label": "CNN vs ViT (ajuste fino)", "a": "resnet50_finetune_cosine_aug-main_r160", "b": "dinov2_small_finetune_cosine_aug-main_r154"},
+  {"label": "Pre-treino geral vs medico (ajuste fino)", "a": "radimagenet_resnet50_finetune_cosine_aug-main_r160", "b": "resnet50_finetune_cosine_aug-main_r160"},
+  {"label": "Ajuste fino: scheduler vs LR constante", "a": "resnet50_finetune_cosine_aug-main_r160", "b": "resnet50_finetune_const_aug-main_r160"},
+  {"label": "Ajuste fino: LLRD vs scheduler", "a": "resnet50_finetune_llrd_aug-main_r160", "b": "resnet50_finetune_cosine_aug-main_r160"},
+  {"label": "Ajuste fino: descong. gradual vs scheduler", "a": "resnet50_finetune_gradual_aug-main_r160", "b": "resnet50_finetune_cosine_aug-main_r160"},
+  {"label": "Aumento: politica principal vs nenhum", "a": "resnet50_finetune_cosine_aug-main_r160", "b": "resnet50_finetune_cosine_aug-none_r160"},
+  {"label": "Aumento: politica principal vs alternativa", "a": "resnet50_finetune_cosine_aug-main_r160", "b": "resnet50_finetune_cosine_aug-alt_r160"},
+  {"label": "Melhor modelo vs baseline classico TP1", "a": "resnet50_finetune_cosine_aug-main_r160", "b": "baseline_hog_rf"},
+  {"label": "Baseline classico vs trivial", "a": "baseline_hog_rf", "b": "baseline_trivial"}
+]
