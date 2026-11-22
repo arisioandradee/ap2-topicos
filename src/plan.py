@@ -11,7 +11,7 @@ import argparse
 RES = {"resnet50": 160, "convnext_tiny": 160, "efficientnet_b0": 160, "vit_small_sup": 160,
        "dinov2_small": 154, "dino_vits16": 160, "radimagenet_resnet50": 160}
 FROZEN = ["resnet50", "convnext_tiny", "vit_small_sup", "dinov2_small", "dino_vits16", "radimagenet_resnet50"]
-FT = ["resnet50", "vit_small_sup", "dinov2_small", "radimagenet_resnet50"]
+FT = ["resnet50", "vit_small_sup", "dinov2_small", "dino_vits16", "radimagenet_resnet50"]
 
 
 def cmds(a):
