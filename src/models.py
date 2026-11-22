@@ -33,9 +33,18 @@ def build(name, res=160, num_outputs=6, pretrained=True, weights_path=None):
     if fam == "medico":
         model = timm.create_model(tname, pretrained=False, num_classes=num_outputs)
         if weights_path:
-            sd = torch.load(weights_path, map_location="cpu")
+            sd = torch.load(weights_path, map_location="cpu", weights_only=True)
             sd = sd.get("state_dict", sd)
-            sd = {k.replace("module.", "").replace("backbone.", ""): v for k, v in sd.items()}
+            sd = {k.replace("module.", ""): v for k, v in sd.items()}
+            # RadImageNet (ResNet50.pt) guarda o tronco como nn.Sequential numerado: backbone.<i>.*
+            seq = {"0": "conv1", "1": "bn1", "4": "layer1", "5": "layer2", "6": "layer3", "7": "layer4"}
+
+            def _ren(k):
+                if k.startswith("backbone."):
+                    i, _, rest = k[len("backbone."):].partition(".")
+                    return f"{seq[i]}.{rest}" if i in seq else None
+                return k
+            sd = {nk: v for nk, v in ((_ren(k), v) for k, v in sd.items()) if nk is not None}
             sd = {k: v for k, v in sd.items() if not k.startswith(("fc.", "classifier."))}
             missing, unexpected = model.load_state_dict(sd, strict=False)
             print(f"[radimagenet] carregado; missing={len(missing)} unexpected={len(unexpected)}")
