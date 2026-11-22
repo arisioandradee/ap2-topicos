@@ -5,3 +5,4 @@ cache/
 *.pt
 *.pth
 .ipynb_checkpoints/
+DIARIO.md
