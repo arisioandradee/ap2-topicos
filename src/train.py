@@ -132,6 +132,12 @@ def finetune(a, model, df, mean, std, device, info):
     lr = a.lr or FAMILY_LR[M.REGISTRY[a.model][1]]
     ld = a.layer_decay if a.lr_mode == "llrd" else None
     opt = timm.optim.create_optimizer_v2(model, "adamw", lr=lr, weight_decay=a.wd, layer_decay=ld)
+    if ld is not None:
+        # o timm so guarda 'lr_scale' em cada grupo; quem aplica a escala e o scheduler do timm.
+        # Como usamos LambdaLR (torch), aplicamos a escala por camada no lr de cada grupo aqui.
+        for g in opt.param_groups:
+            g["lr"] = lr * g.get("lr_scale", 1.0)
+        info.update(llrd_scales=sorted({round(g.get("lr_scale", 1.0), 4) for g in opt.param_groups}))
     steps_per_epoch = len(ld_tr)
     total = steps_per_epoch * a.epochs
     sched = build_scheduler(opt, total, a.warmup_frac) if a.lr_mode != "const" else None
