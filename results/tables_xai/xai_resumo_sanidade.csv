@@ -1,0 +1,17 @@
+modelo,metodo,modo,mean,std,count
+dino_vits16_congelado,gradcam,full,0.0476,0.3445,20
+dino_vits16_congelado,gradcam,top,-0.0477,0.235,20
+dino_vits16_congelado,oclusao,full,0.0056,0.1106,10
+dino_vits16_congelado,oclusao,top,0.1895,0.3526,10
+radimagenet_resnet50_ft,gradcam,full,0.0402,0.2769,20
+radimagenet_resnet50_ft,gradcam,top,0.0928,0.2631,20
+radimagenet_resnet50_ft,oclusao,full,-0.0465,0.1726,10
+radimagenet_resnet50_ft,oclusao,top,0.1524,0.2173,10
+resnet50_ft,gradcam,full,0.1162,0.3729,20
+resnet50_ft,gradcam,top,0.0928,0.287,20
+resnet50_ft,oclusao,full,0.041,0.1196,10
+resnet50_ft,oclusao,top,0.0646,0.1758,10
+vit_small_sup_ft,gradcam,full,0.0443,0.1115,20
+vit_small_sup_ft,gradcam,top,-0.2474,0.1996,20
+vit_small_sup_ft,oclusao,full,-0.0601,0.26,10
+vit_small_sup_ft,oclusao,top,0.0173,0.178,10
