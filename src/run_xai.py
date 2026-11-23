@@ -125,8 +125,7 @@ def cmd_explain(a):
             return xai.saliency_occlusion(m, x, idx=0, window=a.window, stride=a.stride)
 
         for cat in CATS:
-            fig, ax = plt.subplots(3, len(cases[key]["casos"][cat]), figsize=(3 * len(cases[key]["casos"][cat]), 9))
-            ax = np.atleast_2d(ax)
+            fig, ax = plt.subplots(3, len(cases[key]["casos"][cat]), figsize=(3 * len(cases[key]["casos"][cat]), 9), squeeze=False)
             for j, c in enumerate(cases[key]["casos"][cat]):
                 iid = c["image_id"]
                 img = store.get(iid)
