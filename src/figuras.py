@@ -26,7 +26,11 @@ def tabelas(tables, xai_tables):
         "AUC-PR": [f"{m:.3f} ± {s:.3f}" for m, s in zip(mt.auc_pr_mean, mt.auc_pr_std)]})
     pt = pd.read_csv(os.path.join(tables, "paired_tests.csv"))
     pares = pt[["comparacao", "dAUC", "ic_lo", "ic_hi", "p_bootstrap_pareado", "p_delong", "conclusao"]].round(4)
-    est = pd.read_csv(os.path.join(tables, "stratified.csv")).drop(columns="config").round(4).fillna("")
+    est = pd.read_csv(os.path.join(tables, "stratified.csv")).drop(columns="config").round(4)
+    for c in ("n", "n_pos", "pacientes"):
+        if c in est:
+            est[c] = est[c].astype("Int64")
+    est = est.astype(object).where(est.notna(), "")
     partes = ["## Tabela principal (teste)", tabela_md(principal), "## Testes pareados", tabela_md(pares),
               "## Analise estratificada", tabela_md(est)]
     for arq, titulo in (("xai_resumo_metricas.csv", "Explicabilidade: metricas"),
