@@ -1,0 +1,13 @@
+estrato,n_pos,auc,n,prevalencia,pacientes,auc_ic_lo,auc_ic_hi,config
+any,16245,0.9663072664445108,,,,,,vit_small_sup_finetune_cosine_aug-main_r160
+epidural,409,0.9484640710323415,,,,,,vit_small_sup_finetune_cosine_aug-main_r160
+intraparenchymal,5709,0.9727047542745728,,,,,,vit_small_sup_finetune_cosine_aug-main_r160
+intraventricular,4080,0.9859140977877108,,,,,,vit_small_sup_finetune_cosine_aug-main_r160
+subarachnoid,5229,0.9471919610654276,,,,,,vit_small_sup_finetune_cosine_aug-main_r160
+subdural,7091,0.9585973204576861,,,,,,vit_small_sup_finetune_cosine_aug-main_r160
+posicao: terco inferior (base),2368,0.952095686011127,36402.0,0.065051370803802,2856.0,0.9455795410551905,0.9584319671820972,vit_small_sup_finetune_cosine_aug-main_r160
+posicao: terco medio,9764,0.9617771701695821,37726.0,0.2588135503366379,2856.0,0.9566980673988097,0.9658351077431497,vit_small_sup_finetune_cosine_aug-main_r160
+posicao: terco superior,4113,0.9684380469619975,38865.0,0.10582786568892319,2856.0,0.9646503657928635,0.9715928067360048,vit_small_sup_finetune_cosine_aug-main_r160
+RescaleIntercept=-1024,15467,0.9665142067306818,111007.0,0.13933355554154242,2797.0,0.9632943234590149,0.9694044586855165,vit_small_sup_finetune_cosine_aug-main_r160
+RescaleIntercept=-1000,427,0.922843686199996,1238.0,0.34491114701130854,41.0,0.8782991709196136,0.9583189892076641,vit_small_sup_finetune_cosine_aug-main_r160
+RescaleIntercept=0,331,0.937324910738808,716.0,0.4622905027932961,23.0,0.9054360909697127,0.9664496042594418,vit_small_sup_finetune_cosine_aug-main_r160

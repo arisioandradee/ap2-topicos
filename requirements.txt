@@ -1,16 +1,18 @@
+# Versoes usadas para gerar as tabelas e rodar os testes.
+# O treino foi feito no Kaggle (2x Tesla T4) com torch 2.11.0+cu130.
 numpy==2.5.2
 pandas==3.0.5
 scipy==1.18.1
 scikit-learn==1.9.0
+scikit-image==0.26.0
 matplotlib==3.11.1
-pillow==12.3.0
+pillow==13.0.0
 pydicom==3.0.2
+joblib==1.5.3
+tqdm==4.70.0
 torch==2.15.0
 torchvision==0.29.2
 timm==1.0.31
 grad-cam==1.5.7
 captum==0.9.0
-tqdm==4.70.0
-pytest
-scikit-image==0.26.0
-joblib
+pytest==8.3.3

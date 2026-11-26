@@ -39,6 +39,31 @@ def aligned(df_test, ids, prob):
     return prob[s.loc[df_test["image_id"]].values]
 
 
+def estratos_extra(te, p, n_boot=500):
+    """AUC de 'any' com IC por paciente em dois recortes: posicao do corte na serie (tercos da coordenada z)
+    e RescaleIntercept do DICOM (indicador do equipamento/origem). SliceThickness e KVP vem vazios no conjunto."""
+    y, pat = te["any"].values, te["PatientID"].values
+    grupos = []
+    if "ImagePositionPatient" in te:
+        z = te["ImagePositionPatient"].map(lambda v: float(str(v).split("|")[2]))
+        r = z.groupby(te["SeriesInstanceUID"]).rank(pct=True).values
+        grupos += [("posicao: terco inferior (base)", r <= 1 / 3),
+                   ("posicao: terco medio", (r > 1 / 3) & (r <= 2 / 3)),
+                   ("posicao: terco superior", r > 2 / 3)]
+    if "RescaleIntercept" in te:
+        ri = te["RescaleIntercept"].values
+        grupos += [(f"RescaleIntercept={v:.0f}", ri == v) for v in sorted(set(ri))]
+    linhas = []
+    for nome, m in grupos:
+        npos = int(y[m].sum())
+        if npos < 20 or int(m.sum()) - npos < 20:
+            continue
+        est, lo, hi = stats.bootstrap_ci(y[m], p[m], pat[m], n_boot=n_boot)
+        linhas.append({"estrato": nome, "n": int(m.sum()), "n_pos": npos, "prevalencia": npos / m.sum(),
+                       "pacientes": len(set(pat[m])), "auc": est, "auc_ic_lo": lo, "auc_ic_hi": hi})
+    return linhas
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--splits", required=True); ap.add_argument("--runs", default="results/runs")
@@ -99,10 +124,7 @@ def main(argv=None):
     Y = te[SUBTYPES].values.astype(float)
     rows = [{"estrato": s, "n_pos": int(Y[:, i].sum()), "auc": v} for i, (s, v) in
             enumerate(stats.subtype_auc(Y, P).items())]
-    for col in ("SliceThickness", "KVP"):
-        if col in te:
-            sa = stats.stratified_auc(te, P[:, 0], col)
-            rows += [{"estrato": f"{col}={r[col]}", "n_pos": r["positivos"], "auc": r["auc"]} for _, r in sa.iterrows()]
+    rows += estratos_extra(te, P[:, 0])
     pd.DataFrame(rows).assign(config=best).to_csv(os.path.join(a.out, "stratified.csv"), index=False)
     print("melhor config:", best)
 
