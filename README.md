@@ -74,7 +74,7 @@ python -m src.prep_dicom --dicom_dir <stage_2_train> --out_dir ich192 --size 192
 # junta as partes e cria o splits.csv (partição por paciente)
 python -m src.build_dataset --input_root <pasta_com_as_partes> --labels <stage_2_train.csv> --out_dir ich192
 ```
-O arquivo excluído por estar corrompido é registrado em `corrupted_shard*.txt` durante a conversão.
+Um arquivo está corrompido e foi excluído: `ID_6431af929` (ver [`docs/corrupted.txt`](docs/corrupted.txt)). A conversão registra esses casos em `corrupted_shard*.txt`.
 
 ## Treino
 ```bash

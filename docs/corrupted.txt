@@ -1,0 +1,1 @@
+ID_6431af929	stage_2_train: bytes de pixel incompletos (153710 de 524288); excluido na conversao
