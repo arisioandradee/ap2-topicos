@@ -51,6 +51,7 @@ Tabelas completas em [`results/tables/`](results/tables) e resumo em [`figures/t
 | `src/train.py` | extrator congelado (`linear`) e ajuste fino (`const`, `cosine`, `llrd`, `gradual`) |
 | `src/plan.py`, `src/run_phase.py` | lista e execução dos experimentos |
 | `src/baselines.py` | baselines do TP1 no treino completo |
+| `src/empacotar_pesos.py` | montagem do pacote de pesos |
 | `src/infer.py` | predições a partir dos pesos, sem retreinar |
 | `src/stats.py`, `src/make_report.py` | métricas, intervalos, testes pareados e análise estratificada |
 | `src/xai.py`, `src/run_xai.py` | Grad-CAM, oclusão, deleção e inserção, teste de sanidade |
@@ -102,7 +103,9 @@ python -m src.figuras --tables results/tables --xai_tables xai_out --xai_figs xa
 ```
 
 ## Pesos treinados
-São 54 execuções, com os pesos do ajuste fino em meia precisão, as cabeças lineares dos extratores congelados e as predições dos baselines. O link do pacote será adicionado nesta seção.
+São 54 execuções, com os pesos do ajuste fino em meia precisão, as cabeças lineares dos extratores congelados e as predições dos baselines (1,3 GB).
+
+**Download:** [ich-tp2-pesos no Kaggle](https://www.kaggle.com/datasets/arisioandrade/ich-tp2-pesos) (licença CC BY-NC-SA 4.0). O pacote foi montado com `src/empacotar_pesos.py` e fica na pasta `pesos/` do dataset.
 
 ## Hardware e custo
 Treino no Kaggle com 2× Tesla T4. Por execução: ajuste fino de 22 a 35 min, extrator congelado de 3 a 6 min e HOG + Random Forest cerca de 7,5 h de CPU. Parâmetros e tempos por configuração estão em [`results/tables/main_table.csv`](results/tables/main_table.csv).
