@@ -3,6 +3,7 @@
   python -m src.figuras --tables results/tables --xai_tables results/tables_xai --xai_figs figures/xai --out figures
 
 Saidas em --out: fig_xai.png (ViT-S/16: 2 primeiros casos VP, FP e FN, na ordem do criterio pre-declarado)
+fig_xai_comparacao.png (ResNet50 e DINO congelado)
 e tabelas.md (tabela principal, ablacoes e medidas de explicabilidade).
 """
 import argparse, json, os
@@ -56,12 +57,34 @@ def figura(xai_figs, casos_json, destino):
     fig, ax = plt.subplots(2, 6, figsize=(7.2, 2.55))
     for j, (cat, c, cam, ocl) in enumerate(paineis):
         ax[0, j].imshow(cam); ax[1, j].imshow(ocl)
-        ax[0, j].set_title(f"{cat}  $y$={c['y']}  $p$={c['p']:.2f}", fontsize=7, pad=2)
+        ax[0, j].set_title(f"{'VP' if cat == 'TP' else cat}  $y$={c['y']}  $p$={c['p']:.2f}", fontsize=7, pad=2)
         ax[0, j].axis("off"); ax[1, j].axis("off")
     for i, rotulo in enumerate(("Grad-CAM", "Oclusão")):
         ax[i, 0].text(-0.06, 0.5, rotulo, transform=ax[i, 0].transAxes, rotation=90, va="center", ha="right", fontsize=7)
     plt.subplots_adjust(left=0.03, right=0.995, top=0.9, bottom=0.01, wspace=0.03, hspace=0.04)
     fig.savefig(destino, dpi=300); plt.close(fig)
+
+
+def figura_comparacao(xai_figs, destino):
+    """Dois primeiros VP do ResNet50 (ajuste fino) e do DINO (congelado); os casos sao diferentes por modelo."""
+    import matplotlib; matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from PIL import Image
+    fig, ax = plt.subplots(2, 4, figsize=(3.5, 1.9))
+    j = 0
+    for chave, nome in (("resnet50_ft", "ResNet50"), ("dino_vits16_congelado", "DINO cong.")):
+        im = Image.open(os.path.join(xai_figs, chave, "casos_TP.png")).convert("RGB")
+        e = im.size[0] / 1560.0
+        for x0, x1 in ((58, 403), (435, 780)):
+            for i, (y0, y1) in enumerate(((445, 790), (806, 1150))):
+                ax[i, j].imshow(im.crop((int(x0 * e), int(y0 * e), int(x1 * e), int(y1 * e))))
+                ax[i, j].axis("off")
+            ax[0, j].set_title(f"{nome} (VP)", fontsize=6, pad=2)
+            j += 1
+    for i, rotulo in enumerate(("Grad-CAM", "Oclusão")):
+        ax[i, 0].text(-0.06, 0.5, rotulo, transform=ax[i, 0].transAxes, rotation=90, va="center", ha="right", fontsize=6)
+    plt.subplots_adjust(left=0.06, right=0.995, top=0.91, bottom=0.01, wspace=0.03, hspace=0.04)
+    fig.savefig(destino, dpi=400); plt.close(fig)
 
 
 def main(argv=None):
@@ -74,6 +97,7 @@ def main(argv=None):
     with open(os.path.join(a.out, "tabelas.md"), "w", encoding="utf-8") as f:
         f.write(tabelas(a.tables, a.xai_tables))
     figura(a.xai_figs, a.cases, os.path.join(a.out, "fig_xai.png"))
+    figura_comparacao(a.xai_figs, os.path.join(a.out, "fig_xai_comparacao.png"))
     print("salvo em", a.out)
 
 

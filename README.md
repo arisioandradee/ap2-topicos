@@ -30,6 +30,8 @@ Tabelas completas em [`results/tables/`](results/tables) e resumo em [`figures/t
 
 ![Grad-CAM e oclusão no ViT-S/16](figures/fig_xai.png)
 
+![ResNet50 com ajuste fino e DINO congelado](figures/fig_xai_comparacao.png)
+
 ## Protocolo
 - **Dados:** todo o `stage_2_train` (752.803 imagens, 1 corrompida excluída). Cada DICOM é convertido para JPEG 192×192 com três janelas de HU nos canais: cérebro (40/80), subdural (80/200) e osso (600/2800).
 - **Partição fixa por paciente** (70/15/15, semente 2026), com verificação de que nenhum paciente aparece em dois conjuntos. Treino: 527.215 imagens de 13.247 pacientes. Validação: 112.594 de 2.835. Teste: 112.993 de 2.856.
@@ -103,4 +105,4 @@ python -m src.figuras --tables results/tables --xai_tables xai_out --xai_figs xa
 São 54 execuções, com os pesos do ajuste fino em meia precisão, as cabeças lineares dos extratores congelados e as predições dos baselines. O link do pacote será adicionado nesta seção.
 
 ## Hardware e custo
-Treino no Kaggle com 2× Tesla T4. Por execução: ajuste fino de 23 a 35 min, extrator congelado de 3 a 6 min e HOG + Random Forest cerca de 7,5 h de CPU. Parâmetros e tempos por configuração estão em [`results/tables/main_table.csv`](results/tables/main_table.csv).
+Treino no Kaggle com 2× Tesla T4. Por execução: ajuste fino de 22 a 35 min, extrator congelado de 3 a 6 min e HOG + Random Forest cerca de 7,5 h de CPU. Parâmetros e tempos por configuração estão em [`results/tables/main_table.csv`](results/tables/main_table.csv).
